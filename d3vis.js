@@ -51,6 +51,8 @@
 			, yAxisTickNumber: 5
 			, titlePadding: 30
 			, titleAlign: 'middle'
+			, titleSize: 18
+			, titleWeight: 'bold'
 			, subTitlePadding: 20
 			, colors: ["#D7EB3C", "#0D6854", "#E9F681", "#C3CDC3", "#B9F7BC"]
 			, legend: {
@@ -67,7 +69,15 @@
 		bar.settings = settings || defaultSettings;
 	 	Object.keys(defaultSettings).forEach(function(key) {
 	 		if (bar.settings[key]===undefined) bar.settings[key] = defaultSettings[key];
-	 	})
+	 	});
+
+	 	['legend', 'margin'].forEach(function(setting) {
+	 		if (bar.settings[setting]) {
+		 		Object.keys(defaultSettings[setting]).forEach(function(key) {
+	 				if (bar.settings[setting][key]===undefined) bar.settings[setting][key] = defaultSettings[setting][key];
+		 		});
+	 		}
+	 	});
 
 	 	// set some settings that depend on others
 	 	bar.settings.plotWidth = bar.settings.plotWidth || bar.settings.width - bar.settings.margin.left - bar.settings.margin.right;
@@ -79,6 +89,7 @@
 	 	bar.settings.titleX = bar.settings.titleX || bar.settings.width/2;
 	 	bar.settings.subtitleX = bar.settings.subtitleX || bar.settings.width/2;
 
+	 	// legend settings
 	 	var s = bar.settings
 	 	if(s.legend) {
 			s.legend.textY = s.legend.textY || s.legend.boxSize/2;
@@ -89,8 +100,12 @@
 	 		s.legend.transform = s.legend.transform || function() { 
 				var transformX = s.legend.transformX || s.width-s.margin.right;
 				var transformY = s.legend.transformY || s.margin.top;
-	 			return "translate("+(s.width-s.margin.right)+"," + (s.margin.top) + ")"; 
+	 			return "translate("+ transformX +"," + transformY + ")"; 
 	 		};
+	 	}
+	 	// title settings
+	 	if(s.title) {
+	 		s.titleStyle = s.titleStyle || "font-size:"+s.titleSize+"; font-weight:"+s.titleWeight+";";
 	 	}
 
 		bar.build = function() {
@@ -110,7 +125,7 @@
 			self.xScale1 = d3.scale.ordinal(); // scale within a given x category
 			
 			self.yScale = d3.scale.linear()
-				.range([s.plotHeight,s.yAxisPadding]);
+				.range([s.plotHeight,s.xAxisPadding]);
 
 			self.colorScale = d3.scale.ordinal()
 				.range(s.colors);
@@ -129,17 +144,21 @@
 			if(s.yAxisFormat) self.yAxis.tickFormat(d3.format(s.yAxisFormat));
 
 			// create the main title
-			if(s.title) {	
-				var title = self.g.append('g')
-					.attr('class', 'vis-title')
-					.append('text')
-						.attr('x', s.titleX)
-						.attr('y', s.titlePadding)
-						.attr('text-anchor', s.titleAlign);
+			if(s.title) {
+				s.title.forEach(function(title, i) {
+					var t = self.g.append('g')
+						.attr('class', 'vis-title')
+						.append('text')
+							.attr('x', s.titleX)
+							.attr('y', s.titlePadding + (i)*s.titleSize)
+							.attr('text-anchor', s.titleAlign);
 
-				// create the style if needed
-				if(s.titleStyle) title.attr('style', s.titleStyle);
-				title.text(s.title);
+					// create the style if needed
+					if(s.titleStyle) t.attr('style', s.titleStyle);
+					// the text
+					t.text(title);
+				})	
+
 			}
 
 			// create the subtitle
@@ -292,14 +311,14 @@
 	  			.attr('x', function(d) { return self.xScale1(d.name); })
 	  			.attr('width', self.xScale1.rangeBand())
 	  			.attr('y', function(d) { return self.yScale(d.value); })
-	  			.attr('height', function(d) { return s.plotHeight - s.xAxisPadding - self.yScale(d.value); })
+	  			.attr('height', function(d) { return d3.max([s.plotHeight - s.xAxisPadding - self.yScale(d.value), 0]); })
 	      		.on('mouseover', function(d) { return (s.tooltips) ? self.tip.show : null; })
 	      		.on('mouseout', function(d) { return (s.tooltips) ? self.tip.hide : null; });
 
 	      	var barsUpdate = bars.transition()
 	      		.duration(s.duration)
 		      	.attr("y", function(d) { return self.yScale(d.value) + s.margin.top; })
-		      	.attr("height", function(d) { return s.plotHeight - s.xAxisPadding - self.yScale(d.value); });
+	  			.attr('height', function(d) { return d3.max([s.plotHeight - s.xAxisPadding - self.yScale(d.value), 0]); });
 
 	      	var barsExit = bars.exit().transition()
 	      		.duration(s.duration)
