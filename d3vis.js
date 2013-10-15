@@ -42,7 +42,10 @@
 		if(container[0]===null) { return "Container doesn't exist"; }
 
 		var defaultSettings = {
-			tooltips: false
+			tooltips: {
+				offset: [-10,0]
+				, html: function(d) { return "<strong>"+d.name+":</strong> <span style='color:"+"#FFF"+"'>" + d.value + "</span>"; }
+			}
 			, palette5a: ["#D7EB3C", "#0D6854", "#E9F681", "#C3CDC3", "#B9F7BC"]
 			, vertical: true
 			, margin: {top: 100, left: 100, right: 100, bottom: 100}
@@ -57,6 +60,15 @@
 			, xOnY1: false // by default no x categories are on y axis 1.
 			, axisMax: 0
 			, axisMin: 0
+			, valueLabels: {
+				vars: []
+				, format: '0.2f'
+				, anchor: 'middle'
+				, size: 12
+				, weight: 'bold'
+				, fill: '#000'
+				, padding: 5
+			}
 			, xAxis: {
 				enabled: true
 				, padding: 5 
@@ -109,7 +121,7 @@
 				, align: 'middle'
 				, size: 18
 				, weight: 'bold'
-				, stroke: '#000'
+				, fill: '#000'
 			}
 			, subTitle: {
 				text: false
@@ -117,7 +129,7 @@
 				, align: 'middle'
 				, size: 14
 				, weight: 'normal'
-				, stroke: '#000'
+				, fill: '#000'
 			}
 			, legend: {
 				enabled: true
@@ -125,7 +137,7 @@
 				, boxSize: 18
 				, textX: -30
 				, textAnchor: 'end'
-				, entryTransformX: 0
+				, entryWidth: 150
 			}
 		};
 
@@ -137,7 +149,7 @@
 	 	});
 
 	 	// for settings with subsettings, loop through each subsetting
-	 	['legend', 'margin', 'xAxis', 'yAxis0', 'yAxis1', 'title', 'subTitle'].forEach(function(setting) {
+	 	['legend', 'margin', 'xAxis', 'yAxis0', 'yAxis1', 'title', 'subTitle', 'tooltips', 'valueLabels'].forEach(function(setting) {
 	 		if (s[setting]) {
 		 		Object.keys(defaultSettings[setting]).forEach(function(key) {
 	 				if (s[setting][key]===undefined) s[setting][key] = defaultSettings[setting][key];
@@ -154,7 +166,7 @@
 	 	s.yAxis0.Y = s.yAxis0.Y || -s.yAxis0.titlePadding;
 	 	s.yAxis1.X = s.yAxis1.X || -s.plotHeight/2;
 	 	s.yAxis1.Y = s.yAxis1.Y || -s.yAxis1.titlePadding;
-	 	s.title.X = s.title.X || s.width/2;
+	 	s.title.X = s.title.X || s.margin.left + s.plotWidth/2;
 	 	s.subTitle.X = s.subTitle.X || s.width/2;
 
 	 	// colors to use
@@ -165,36 +177,59 @@
 	 			: s.colors = s.colors; // user specified an array of color values to be used
 
 	 	// legend settings
-
 	 	if(s.legend.enabled) {
-			s.legend.textY = s.legend.textY || s.legend.boxSize/2;
-			s.legend.entryTransformY = s.legend.entryTransformY || s.legend.boxSize + 2;
-			s.legend.entryTransform = s.legend.entryTransform || function(d, i) { 
-				return "translate("+s.legend.entryTransformX+"," + i * s.legend.entryTransformY + ")"; 
-			};
-	 		s.legend.transform = s.legend.transform || function() { 
-				var transformX = s.legend.transformX || s.width-s.margin.right;
-				var transformY = s.legend.transformY || s.margin.top;
-	 			return "translate("+ transformX +"," + transformY + ")"; 
-	 		};
+	 		if(s.legend.stacked) {
+				s.legend.textY = s.legend.textY || s.legend.boxSize/2;
+				s.legend.entryTransformX = s.legend.entryTransformX || 0;
+				s.legend.entryTransformY = s.legend.entryTransformY || s.legend.boxSize + 2;
+				s.legend.entryTransform = s.legend.entryTransform || function(d, i) { 
+					return "translate("+s.legend.entryTransformX+"," + i * s.legend.entryTransformY + ")"; 
+				};
+		 		s.legend.transform = s.legend.transform || function() { 
+					var transformX = s.legend.transformX || s.width-s.margin.right;
+					var transformY = s.legend.transformY || s.margin.top;
+		 			return "translate("+ transformX +"," + transformY + ")"; 
+		 		};
+		 	}
+		 	else {
+				s.legend.textY = s.legend.textY || s.legend.boxSize/2;
+				s.legend.entryTransformX = s.legend.entryTransformX || s.legend.entryWidth;
+				s.legend.entryTransformY = s.legend.entryTransformY || 0;
+				s.legend.entryTransform = s.legend.entryTransform || function(d, i) { 
+					return "translate("+(i*s.legend.entryTransformX)+"," + s.legend.entryTransformY + ")"; 
+				};
+		 		s.legend.transform = s.legend.transform || function() { 
+					var transformX = s.legend.transformX || s.margin.left;
+					var transformY = s.legend.transformY || s.height - s.margin.bottom + 30;
+		 			return "translate("+ transformX +"," + transformY + ")"; 
+		 		};
+
+		 	}
+
 	 	}
 
 	 	// title style if not set to false
-	 	["title", "subTitle"].forEach(function(t) {
+	 	["title", "subTitle", "valueLabels"].forEach(function(t) {
 	 		if (s[t].style!==false) {
 	 			s[t].style = s[t].style 
 	 				|| "font-size:"+s[t].size
 	 					+"; font-weight:"+s[t].weight
-	 					+"; font-stroke:"+s[t].stroke
+	 					+"; fill:"+s[t].fill
 	 					+";";
 	 		}
 	 	});
 
 	 	// axis settings
 	 	s.xAxis.transform = s.xAxis.transform || "translate(" + 0 + "," + (s.plotHeight + s.margin.top) + ")";
-	 	s.yAxis0.transform = s.yAxis0.transform || "translate("+ s.margin.left + "," + s.margin.top + ")";
-	 	s.yAxis1.transform = s.yAxis1.transform || "translate("+ (s.margin.left + s.plotWidth) + "," + s.margin.top + ")";
+	 	["yAxis0", "yAxis1"].forEach(function(axis) {
+	 		if(!s[axis].transform) {
+	 			s[axis].transform = (s[axis].orient==="left") 
+	 				? "translate("+ s.margin.left + "," + s.margin.top + ")"
+	 				: "translate("+ (s.margin.left + s.plotWidth) + "," + s.margin.top + ")";
+	 		}
+	 	});
 
+	 	// set styles for the axes
 	 	["xAxis", "yAxis0", "yAxis1"].forEach(function(axis) {
 	 		// set styles
 	 		if (s[axis].labelStyle!==false) {
@@ -211,9 +246,19 @@
 	 		} 
 	 	});
 
+	 	// just a shortcut...
 	 	bar.settings = s;
 
 		bar.build = function() {
+			// create the initial figure, including:
+			// 		the title and subtitle
+			// 		the x-axis and any y-axes
+			// 		the tooltips
+			// 		the legend
+			//
+			// but don't draw the bars yet
+			//
+
 			var self = this;
 			// create the outer parts of the figure
 			// title, axes, etc...
@@ -309,13 +354,11 @@
 		    });
 
 			// build the tips if set
-			if(s.tooltips) {
+			if(s.tooltips!==false) {
 				self.tip = d3.tip()
   					.attr('class', 'd3-tip')
   					.offset(s.tooltips.offset)
-  					.html(function(d) {
-    					return s.tooltips.html;
-  					});
+  					.html(function(d) { return s.tooltips.html(d); });
 
   				// associate the tooltips with the container
   				self.g.call(self.tip);
@@ -337,7 +380,11 @@
 
 				var legendBox = legendEntry.append("rect")
 					.attr('class', 'legend-box')
-			    	.attr("x", -s.legend.boxSize)
+			    	.attr("x", function(d, i) { 
+			    		return (s.legend.stacked)
+			    			? -s.legend.boxSize
+			    			: -s.legend.boxSize; 
+			    	})
 			    	.attr("width", s.legend.boxSize)
 			    	.attr('y', 0)
 			    	.attr("height", s.legend.boxSize)
@@ -417,6 +464,7 @@
 
     		}
 	    	// select the bar groups (each category)
+			s.barWidth = self.xScale1.rangeBand();
 		  	var barGroups = self.g.selectAll(".bargroup")
 		  		.data(data)
 		  		.enter().append('g')
@@ -431,15 +479,20 @@
 	  			.attr('class', function(d) { return 'bar '+d.name; })
 	  			.attr('x', function(d) { return self.xScale1(d.name); })
 	  			.attr('width', self.xScale1.rangeBand())
-	  			//.attr('y', function(d) { return self.yScale0(d.value); })
-	  			//.attr('height', function(d) { return d3.max([s.plotHeight - s.xAxis.padding - self.yScale0(d.value), 0]); })
-	      		.on('mouseover', function(d) { return (s.tooltips) ? self.tip.show : null; })
-	      		.on('mouseout', function(d) { return (s.tooltips) ? self.tip.hide : null; });
+		      	.attr("y", s.margin.top + s.plotHeight)
+	  			.attr('height', 0);
+
+	  		if(s.tooltips) {
+	  			barsEnter.on('mouseover', self.tip.show);
+	  			barsEnter.on('mouseout', self.tip.hide);
+	  		}
 
 	      	var barsUpdate = bars.transition()
 	      		.duration(s.duration)
-		      	.attr("y", function(d) { return vis.yScale(self, d) + s.margin.top; })
-	  			.attr('height', function(d) { return d3.max([s.plotHeight - s.xAxis.padding - vis.yScale(self, d), 0]); });
+		      	.attr("y", function(d) { return vis.yScale(self, d) + s.margin.top +1; })
+	  			.attr('height', function(d) { 
+	  				return d3.max([s.plotHeight - vis.yScale(self, d) - s.xAxis.padding, 0]); 
+	  			});
 
 	      	var barsExit = bars.exit().transition()
 	      		.duration(s.duration)
@@ -449,6 +502,22 @@
 	      		? barsEnter.attr('style', function(d) { return s.barStyle+"fill:"+self.colorScale(d.name)+";"; })
 	      		: barsEnter.attr('style', function(d) { return "fill:"+self.colorScale(d.name)+";"; });
 		
+			// add value labels if set
+			if(s.valueLabels) {
+				barText = bars.enter().append('text')
+	  				.attr('class', function(d, i) { return 'value-label '+d.name; })
+		  			.attr('x', function(d) { return self.xScale1(d.name) + s.barWidth/2; })
+			      	.attr("y", function(d) { 
+			      		return vis.yScale(self, d) + s.margin.top - s.valueLabels.padding; 
+			      	})
+			      	.attr('text-anchor', s.valueLabels.anchor)
+					.text(function(d) { return d3.format(s.valueLabels.format)(d.value); });
+
+				(s.valueLabels.style)
+					? barText.attr('style', s.valueLabels.style)
+					: barText.attr('style', "fill:"+s.valueLabels.fill+";")
+			}
+
 		}
 
 		bar.container = container;

@@ -1,0 +1,4 @@
+To Do:
+
+* If legend is not stacked, then calculate the size by the size of the text if it isn't set
+* get tooltips working
